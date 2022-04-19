@@ -3,7 +3,7 @@ from collections import namedtuple
 from enum import Enum
 import re
 
-class DomainType:
+class DomainType(Enum):
     PHISHING = 0
     IP_LOGGER = 1
 
