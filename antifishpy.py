@@ -25,7 +25,7 @@ class antifish:
             json = await response.json()
             
             matches = json.get("matches", [ None ])[0]
-            is_scam = matches and json["match"] and matches["trust_rating"] >= 0.95
+            is_scam = matches is not None and json["match"] and matches["trust_rating"] >= 0.95
             
             return Matches(json["match"], Matches(**matches) if matches is not None else None, is_scam)
     
