@@ -19,7 +19,7 @@ af = antifish("Your Bot Name | Application Link") # This is to pass your applica
 
 @client.event
 async def on_message(message):
-	msg = af.check_message(message)
+	msg = await af.check_message(message)
 	
 	# expect True or False.
 	print(msg.match)
