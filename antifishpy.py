@@ -1,47 +1,35 @@
-import aiohttp
+from aiohttp import ClientSession
+from collections import namedtuple
 import re
 
+INITIAL_MATCH_REGEX = re.compile("(?:[A-z0-9](?:[A-z0-9-]{0,61}[A-z0-9])?\.)+[A-z0-9][A-z0-9-]{0,61}[A-z0-9]")
+
+Matches = namedtuple("Matches", "followed domain source type trust_rating")
+AntiFishMatches = namedtuple("AntiFishMatches", "match matches is_scam")
+
 class antifish:
-    def __init__(self, application):
-        self.application = application
+    __slots__ = ("session",)
+    
+    def __init__(self, application: str):
+        self.session = ClientSession(headers={
+            "User-Agent": f"{application} - via Antifish-py module"
+        })
     
     async def check_message(self, message):
-        if not self.application:
-            raise Exception("You haven't set your application! Please do `af = antifish('Application name | Application link')` so we can send this info as the User-Agent header.")
-
-        if len(self.application) < 1:
-            raise Exception("You haven't set your application! Please do `af = antifish('Application name | Application link')` so we can send this info as the User-Agent header.")
-
-        if not re.search("(?:[A-z0-9](?:[A-z0-9-]{0,61}[A-z0-9])?\.)+[A-z0-9][A-z0-9-]{0,61}[A-z0-9]", message.content):
-            return { "match": False }
-
-        headers = {
-            "User-Agent":f"{self.application} - via Antifish-py module"
-        }
-
-        async with aiohttp.ClientSession(headers=headers) as session:
-            async with session.get("https://anti-fish.bitflow.dev/check", json={ "message":message.content }) as response:
-                return await response.json()
+        """ Checks the message. """
         
-    async def is_scam(self, message):
-        if not self.application:
-            raise Exception("You haven't set your application! Please do `af = antifish('Application name | Application link')` so we can send this info as the User-Agent header.")
+        if not INITIAL_MATCH_REGEX.search(message.content):
+            return Matches(False, None, False)
 
-        if len(self.application) < 1:
-            raise Exception("You haven't set your application! Please do `af = antifish('Application name | Application link')` so we can send this info as the User-Agent header.")
-
-        if not re.search("(?:[A-z0-9](?:[A-z0-9-]{0,61}[A-z0-9])?\.)+[A-z0-9][A-z0-9-]{0,61}[A-z0-9]", message.content):
-            return { "match": False }
-
-        headers = {
-            "User-Agent":f"{self.application} - via Antifish-py module"
-        }
-
-        async with aiohttp.ClientSession(headers=headers) as session:
-            async with session.get("https://anti-fish.bitflow.dev/check", json={ "message":message.content }) as response:
-                res = await response.json()
-                if res["match"] is True and res["matches"][0]["trust_rating"] >= 0.95:
-                    return { "match":True, "match":{ "followed":res["matches"][0]["followed"], "domain":res["matches"][0]["domain"], "source":res["matches"][0]["source"], "type":res["matches"][0]["type"], "trust_rating":res["matches"][0]["trust_rating"] } }
-                else:
-                    return { "match":False }
-        
+        async with self.session.get("https://anti-fish.bitflow.dev/check", json={ "message": message.content }) as response:
+            json = await response.json()
+            
+            matches = json.get("matches", [ None ])[0]
+            is_scam = matches and json["match"] and matches["trust_rating"] >= 0.95
+            
+            return Matches(json["match"], Matches(**matches) if matches is not None else None, is_scam)
+    
+    async def close(self):
+        """ Closes the antifish instance. """
+        if not self.session.closed:
+            await self.session.close()
