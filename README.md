@@ -1,36 +1,34 @@
 # Bitflow Anti-Fish API
-
 This is a simple Python module for the [Bitflow Anti-Fish API](https://anti-fish.bitflow.dev/)!
 
 ## Installation
-
 Use the package manager [pip](https://pypi.org/project/antifishpy/) to install this module.
 
 ```bash
 pip install antifishpy
 ```
 
-## Examples
-
+## Example
 ```python
 from antifishpy import antifish
-from discord.ext import commands
+from collections import namedtuple
+import asyncio
 
-client = commands.Bot(command_prefix="!")
-af = antifish("Your Bot Name | Application Link") # This is to pass your application name as the User-Agent header.
+async def main():
+    af = antifish("amogus application")
+    
+    # check a scam URL like the one below;
+    res = await af.check_message("https://discord-nitro.com")
+    
+    print(res.match, res.is_scam)
+    
+    for m in res.matches:
+        print(m.domain, m.url, m.trust_rating, m.is_scam)
+    
+    await af.close()
 
-@client.event
-async def on_message(message):
-	msg = af.check_message(message)
-	print(msg)
-	# This will return the API response seen at https://anti-fish.bitflow.dev
-	
-	# To get check for a matched domain, check for msg.match being True.
-	# To get the domain trust rating, check msg.matches[0]["trust_rating"].
-
-	# You can also do af.is_scam(), where it will check if there is a match and if the first domain match has a trust rating of over 0.95.
-
-client.run("TOKEN")
+loop = asyncio.get_event_loop()
+loop.run_until_complete(main())
 ```
 
 ## Credit where it's due
